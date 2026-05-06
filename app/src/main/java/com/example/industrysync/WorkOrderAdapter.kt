@@ -1,39 +1,111 @@
 package com.example.industrysync
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class WorkOrderAdapter(private var workOrders: List<WorkOrder>) :
-    RecyclerView.Adapter<WorkOrderAdapter.WorkOrderViewHolder>() {
+class WorkOrderAdapter(
+    private var workOrders: List<WorkOrder>,
+    private val onStatusChanged: (WorkOrder) -> Unit
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    // 1. Describe the "Box" that holds each item
-    class WorkOrderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvTitle: TextView = view.findViewById(R.id.tvTitle)
-        val tvPriority: TextView = view.findViewById(R.id.tvPriority)
+    private companion object {
+        const val TYPE_HEADER = 0
+        const val TYPE_ITEM = 1
     }
 
-    // 2. Inflate the XML layout for each row
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WorkOrderViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_work_order, parent, false)
-        return WorkOrderViewHolder(view)
+    // This list will contain both Headers (Strings) and Items (WorkOrders)
+    private var displayList = mutableListOf<Any>()
+
+    init {
+        updateList()
     }
 
-    // 3. Put the data into the views
-    override fun onBindViewHolder(holder: WorkOrderViewHolder, position: Int) {
-        val order = workOrders[position]
-        holder.tvTitle.text = order.title
-        holder.tvPriority.text = "Priority: ${order.priority}"
-    }
-
-    override fun getItemCount() = workOrders.size
-
-    // Helper to refresh the list later when API returns data
     fun updateData(newOrders: List<WorkOrder>) {
         this.workOrders = newOrders
+        updateList()
         notifyDataSetChanged()
+    }
+
+    private fun updateList() {
+        displayList.clear()
+        val pending = workOrders.filter { !it.isCompleted }
+        val completed = workOrders.filter { it.isCompleted }
+
+        if (pending.isNotEmpty()) {
+            displayList.add("Pending")
+            displayList.addAll(pending)
+        }
+        if (completed.isNotEmpty()) {
+            displayList.add("Completed tasks")
+            displayList.addAll(completed)
+        }
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return if (displayList[position] is String) TYPE_HEADER else TYPE_ITEM
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == TYPE_HEADER) {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_header, parent, false)
+            HeaderViewHolder(view)
+        } else {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_work_order, parent, false)
+            ItemViewHolder(view)
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is HeaderViewHolder) {
+            holder.tvHeader.text = displayList[position] as String
+        } else if (holder is ItemViewHolder) {
+            val order = displayList[position] as WorkOrder
+            holder.bind(order)
+        }
+    }
+
+    override fun getItemCount() = displayList.size
+
+    inner class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvHeader: TextView = view.findViewById(R.id.tvHeaderTitle)
+    }
+
+    inner class ItemViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val tvTitle: TextView = view.findViewById(R.id.tvTitle)
+        private val tvPriorityValue: TextView = view.findViewById(R.id.tvPriorityValue)
+        private val cbCompleted: CheckBox = view.findViewById(R.id.cbCompleted)
+
+        fun bind(order: WorkOrder) {
+            tvTitle.text = order.title
+            tvPriorityValue.text = order.priority
+
+            // Set Title Color based on completion
+            if (order.isCompleted) {
+                tvTitle.setTextColor(Color.parseColor("#4CAF50")) // Green
+                cbCompleted.isChecked = true
+            } else {
+                tvTitle.setTextColor(Color.BLACK)
+                cbCompleted.isChecked = false
+            }
+
+            // Set Priority Color
+            tvPriorityValue.setTextColor(when (order.priority.lowercase()) {
+                "high", "critical" -> Color.RED
+                "medium" -> Color.parseColor("#FF9800") // Orange
+                "low" -> Color.parseColor("#FBC02D") // Yellow/Amber
+                else -> Color.GRAY
+            })
+
+            // Checkbox logic
+            cbCompleted.setOnCheckedChangeListener(null) // Prevent loop
+            cbCompleted.setOnCheckedChangeListener { _, isChecked ->
+                onStatusChanged(order.copy(isCompleted = isChecked))
+            }
+        }
     }
 }
