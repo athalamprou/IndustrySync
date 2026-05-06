@@ -18,7 +18,6 @@ class WorkOrderAdapter(
         const val TYPE_ITEM = 1
     }
 
-    // This list will contain both Headers (Strings) and Items (WorkOrders)
     private var displayList = mutableListOf<Any>()
 
     init {
@@ -81,16 +80,20 @@ class WorkOrderAdapter(
         private val cbCompleted: CheckBox = view.findViewById(R.id.cbCompleted)
 
         fun bind(order: WorkOrder) {
+            // 1. CLEAR listener first
+            cbCompleted.setOnCheckedChangeListener(null)
+
             tvTitle.text = order.title
             tvPriorityValue.text = order.priority
 
-            // Set Title Color based on completion
+            // 2. SET visual state
+            cbCompleted.isChecked = order.isCompleted
+
             if (order.isCompleted) {
-                tvTitle.setTextColor(Color.parseColor("#4CAF50")) // Green
-                cbCompleted.isChecked = true
+                tvTitle.setTextColor(Color.parseColor("#4CAF50")) // Green for success
             } else {
-                tvTitle.setTextColor(Color.BLACK)
-                cbCompleted.isChecked = false
+                // FIXED: Using itemView.context instead of holder
+                tvTitle.setTextColor(itemView.context.getColor(android.R.color.tab_indicator_text))
             }
 
             // Set Priority Color
@@ -101,10 +104,11 @@ class WorkOrderAdapter(
                 else -> Color.GRAY
             })
 
-            // Checkbox logic
-            cbCompleted.setOnCheckedChangeListener(null) // Prevent loop
+            // 3. ATTACH new listener
             cbCompleted.setOnCheckedChangeListener { _, isChecked ->
-                onStatusChanged(order.copy(isCompleted = isChecked))
+                if (isChecked != order.isCompleted) {
+                    onStatusChanged(order.copy(isCompleted = isChecked))
+                }
             }
         }
     }
