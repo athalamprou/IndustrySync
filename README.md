@@ -52,7 +52,7 @@ The Android client serves as the technician's portal, built with a focus on perf
    dotnet run
 **Note:** The server is configured to listen on `http://0.0.0.0:5105` to allow network access from external devices.
 
-**2. Mobile Setup (Android)**
+### **2. Mobile Setup (Android)**
 1. Open the `app` folder in Android Studio.
 
 2. Locate `RetrofitClient.kt` and update the `BASE_URL` with your computer's local IP address:
